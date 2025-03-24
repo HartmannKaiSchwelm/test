@@ -39,7 +39,7 @@
             resultDiv.innerHTML = 'Suche läuft...';
 
             const headers = new Headers({
-                'User-Agent': 'BarcodeScanner/1.0 (https://example.com; your@email.com)'
+                'User-Agent': 'BarcodeScanner/1.0 (https://testthescanner.netlify.app; hartmann.schwelm@gmx.de)'
             });
 
             fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers })
