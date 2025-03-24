@@ -3,61 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner</title>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <title>Barcode-Scanner mit manueller Eingabe</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .container {
-            text-align: center;
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        #reader {
-            width: 300px;
-            margin: 0 auto;
-        }
-        #result {
-            margin-top: 20px;
-            font-size: 1.2em;
-        }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #result { margin-top: 20px; border: 1px solid #ddd; padding: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Barcode Scanner</h1>
-        <div id="reader"></div>
-        <div id="result"></div>
-    </div>
+    <h1>Barcode-Scanner mit manueller Eingabe</h1>
+    <form id="barcodeForm">
+        <input type="text" id="barcodeInput" placeholder="Barcode eingeben" required>
+        <button type="submit">Suchen</button>
+    </form>
+    <div id="result"></div>
 
     <script>
-        const scanner = new Html5QrcodeScanner('reader', {
-            qrbox: { width: 250, height: 250 },
-            fps: 20,
+        const form = document.getElementById('barcodeForm');
+        const resultDiv = document.getElementById('result');
+        let lastRequestTime = 0;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const barcode = document.getElementById('barcodeInput').value;
+            fetchProductInfo(barcode);
         });
 
-        scanner.render(success, error);
+        function fetchProductInfo(barcode) {
+            const currentTime = Date.now();
+            if (currentTime - lastRequestTime < 1000) {
+                resultDiv.innerHTML = 'Bitte warten Sie einen Moment vor der nächsten Anfrage.';
+                return;
+            }
+            lastRequestTime = currentTime;
 
-        function success(result) {
-            document.getElementById('result').innerHTML = `
-                <h2>Erfolgreich gescannt</h2>
-                <p>${result}</p>
-            `;
-            scanner.clear();
-            document.getElementById('reader').remove();
-        }
+            resultDiv.innerHTML = 'Suche läuft...';
 
-        function error(err) {
-            console.error(err);
+            const headers = new Headers({
+                'User-Agent': 'BarcodeScanner/1.0 (https://example.com; your@email.com)'
+            });
+
+            fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 1) {
+                        const product = data.product;
+                        resultDiv.innerHTML = `
+                            <h2>${product.product_name || 'Unbekanntes Produkt'}</h2>
+                            <p><strong>Barcode:</strong> ${barcode}</p>
+                            <p><strong>Marke:</strong> ${product.brands || 'Nicht verfügbar'}</p>
+                            <h3>Nährwerte (pro 100g/100ml):</h3>
+                            <ul>
+                                <li>Energie: ${product.nutriments.energy_kcal || 'N/A'} kcal</li>
+                                <li>Fett: ${product.nutriments.fat || 'N/A'} g</li>
+                                <li>Kohlenhydrate: ${product.nutriments.carbohydrates || 'N/A'} g</li>
+                                <li>Eiweiß: ${product.nutriments.proteins || 'N/A'} g</li>
+                                <li>Salz: ${product.nutriments.salt || 'N/A'} g</li>
+                            </ul>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = 'Produkt nicht gefunden. Bitte überprüfen Sie den Barcode.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler:', error);
+                    resultDiv.innerHTML = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.';
+                });
         }
     </script>
 </body>
